@@ -121,7 +121,10 @@ function getFileType (file) {
     'markdown': 'text/markdown',
     'mp4': 'video/mp4',
     'mp3': 'audio/mp3',
-    'svg': 'image/svg+xml'
+    'svg': 'image/svg+xml',
+    'jpg': 'image/jpeg',
+    'png': 'image/png',
+    'gif': 'image/gif'
   }
 
   const fileExtension = file.name ? getFileNameAndExtension(file.name).extension : null
@@ -489,10 +492,10 @@ function getSocketHost (url) {
 }
 
 function _emitSocketProgress (uploader, progressData, file) {
-  const {progress, bytesUploaded, bytesTotal} = progressData
+  const { progress, bytesUploaded, bytesTotal } = progressData
   if (progress) {
-    uploader.core.log(`Upload progress: ${progress}`)
-    uploader.core.emitter.emit('core:upload-progress', {
+    uploader.uppy.log(`Upload progress: ${progress}`)
+    uploader.uppy.emit('upload-progress', {
       uploader,
       id: file.id,
       bytesUploaded: bytesUploaded,
