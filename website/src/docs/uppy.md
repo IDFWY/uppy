@@ -13,6 +13,7 @@ Core module that orchistrated everything in Uppy, exposing `state`, `events` and
 const uppy = Uppy({
   id: 'uppy',
   autoProceed: true,
+  debug: false,
   restrictions: {
     maxFileSize: false,
     maxNumberOfFiles: false,
@@ -22,7 +23,9 @@ const uppy = Uppy({
   meta: {},
   onBeforeFileAdded: (currentFile, files) => Promise.resolve(),
   onBeforeUpload: (files, done) => Promise.resolve(),
-  locale: defaultLocale
+  locale: defaultLocale,
+  store: new DefaultStore(),
+  thumbnailGeneration: true
 })
 ```
 
@@ -65,7 +68,7 @@ meta: {
 }
 ```
 
-Can be altered with `uppy.setMeta({username: 'Peter'})` method.
+Can be altered with `uppy.setMeta({ username: 'Peter' })` method.
 
 ### `onBeforeFileAdded: (currentFile, files) => Promise.resolve()`
 
@@ -73,10 +76,10 @@ A function run before a file is added to Uppy. Gets passed `(currentFile, files)
 
 ```js
 onBeforeFileAdded: (currentFile, files) => {
-  if (currentFile.name === 'pitercss-IMG_0616.jpg') {
+  if (currentFile.name === 'forest-IMG_0616.jpg') {
     return Promise.resolve()
   }
-  return Promise.reject('this is not the file I was looking for')
+  return Promise.reject('This is not the file I was looking for')
 }
 ```
 
@@ -109,7 +112,8 @@ locale: {
       1: 'You have to select at least %{smart_count} files'
     },
     exceedsSize: 'This file exceeds maximum allowed size of',
-    youCanOnlyUploadFileTypes: 'You can only upload:'
+    youCanOnlyUploadFileTypes: 'You can only upload:',
+    uppyServerError: 'Connection with Uppy Server failed'
   }
 }
 ```
@@ -126,6 +130,14 @@ locale: {
 
 We are using a forked [Polyglot.js](https://github.com/airbnb/polyglot.js/blob/master/index.js#L37-L60).
 
+## `store: defaultStore()`
+
+The Store to use to keep track of internal state. By default, a simple object is used.
+
+This option can be used to plug Uppy state into an external state management library, such as Redux. Then, you can write custom views with the library that is also used by the rest of the application.
+
+<!-- TODO document store API -->
+
 ## Methods
 
 ### `uppy.use(plugin, opts)`
@@ -137,7 +149,7 @@ const Uppy = require('uppy/lib/core')
 const DragDrop = require('uppy/lib/plugins/DragDrop')
 
 const uppy = Uppy()
-uppy.use(DragDrop, {target: 'body'})
+uppy.use(DragDrop, { target: 'body' })
 ```
 
 ### `uppy.run()`
@@ -156,7 +168,7 @@ Add a new file to Uppy’s internal state.
 uppy.addFile({
   name: 'my-file.jpg', // file name
   type: 'image/jpeg', // file type
-  data: fileBlob, // file blob
+  data: blob, // file blob
   source: 'Local', // optional, sets what added the file, for example, Instagram
   isRemote: false // optional, set to true if actual file is not in the browser, but on some remote server, like when using uppy-server + Instagram, for example
 })
@@ -172,9 +184,14 @@ A shortcut method that returns a specific file object from `uppy.state` by its `
 
 ```js
 const file = uppy.getFile('uppyteamkongjpg1501851828779')
-const img = document.createElement('img')
-img.src = file.preview
-document.body.appendChild(img)
+
+file.id        // 'uppyteamkongjpg1501851828779'
+file.name      // 'nature.jpg'
+file.extension // '.jpg'
+file.type      // 'image/jpeg'
+file.data      // the Blob object
+file.size      // 3947642 (returns 'N/A' if size cannot be determined)
+file.preview   // value that can be used to populate "src" attribute of an "img" tag
 ```
 
 ### `uppy.setState(patch)`
@@ -184,13 +201,19 @@ Update `uppy.state`. Usually this method is called internally, but in some cases
 Uppy’s default state on initialization:
 
 ```js
-this.state = {
+{
+  plugins: {},
   files: {},
   capabilities: {
     resumableUploads: false
   },
   totalProgress: 0,
-  meta: Object.assign({}, this.opts.meta)
+  meta: Object.assign({}, this.opts.meta),
+  info: {
+    isHidden: true,
+    type: 'info',
+    message: ''
+  }
 }
 ```
 
@@ -225,18 +248,20 @@ Returns `uppy.state`, which you can also use directly.
 
 ### `uppy.setMeta(data)`
 
-Alters global `meta` object is state, the one that can be set in Uppy options and gets merged with all newly added files.
+Alters global `meta` object is state, the one that can be set in Uppy options and gets merged with all newly added files. Calling `setMeta` will also merge newly added meta data with previously selected files.
 
 ```js
-uppy.setMeta({resize: 1500})
+uppy.setMeta({ resize: 1500, token: 'ab5kjfg' })
 ```
 
-### `uppy.updateMeta(data, fileID)`
+### `uppy.setFileMeta(fileID, data)`
 
 Updated metadata for a specific file.
 
 ```js
-uppy.updateMeta({resize: 1500}, 'myfileID')
+uppy.setFileMeta('myfileID', { 
+  resize: 1500 
+})
 ```
 
 ### `uppy.reset()`
@@ -294,7 +319,7 @@ Subscribe to an uppy-event. See full list of events below.
 
 Uppy exposes events that you can subscribe to in your app:
 
-### `core:upload-progress`
+### `upload-progress`
 
 Fired each time file upload progress is available, `data` object looks like this:
 
@@ -307,17 +332,17 @@ data = {
 ```
 
 ```javascript
-uppy.on('core:upload-progress', (data) => {
+uppy.on('upload-progress', (data) => {
   console.log(data.id, data.bytesUploaded, data.bytesTotal)
 })
 ```
 
-### `core:upload-success`
+### `upload-success`
 
 Fired when single upload is complete.
 
 ``` javascript
-uppy.on('core:upload-success', (fileId, url) => {
+uppy.on('upload-success', (fileId, url) => {
   console.log(url)
   var img = new Image()
   img.width = 300
@@ -327,13 +352,15 @@ uppy.on('core:upload-success', (fileId, url) => {
 })
 ```
 
-### `core:complete`
+### `complete`
 
 Fired when all uploads are complete.
+
 The `result` parameter is an object with arrays of `successful` and `failed` files, just like in [`uppy.upload()`](#uppy-upload)'s return value.
 
 ``` javascript
-uppy.on('core:complete', (result) => {
-  console.log(result)
+uppy.on('complete', (result) => {
+  console.log('successful files:', result.successful)
+  console.log('failed files:', result.failed)
 })
 ```

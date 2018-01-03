@@ -27,7 +27,7 @@ const uppy = Uppy({
 
 uppy.use(Tus, { endpoint: '/upload' })
 
-uppy.on('core:complete', (result) => {
+uppy.on('complete', (result) => {
   const url = result.successful[0].uploadURL
   store.dispatch({
     type: SET_USER_AVATAR_URL,
@@ -63,7 +63,7 @@ The plugins that are available as React component wrappers are:
  - [StatusBar][]
 
 [React]: https://facebook.github.io/react
-[Preact]: https://preact.js.org/
+[Preact]: https://preactjs.com/
 [Dashboard]: /docs/dashboard
 [DragDrop]: /docs/dragdrop
 [ProgressBar]: /docs/progressbar

@@ -1,13 +1,13 @@
-const Plugin = require('./Plugin')
-const html = require('yo-yo')
+const Plugin = require('../core/Plugin')
+const { h } = require('preact')
 
 /**
  * Progress bar
  *
  */
 module.exports = class ProgressBar extends Plugin {
-  constructor (core, opts) {
-    super(core, opts)
+  constructor (uppy, opts) {
+    super(uppy, opts)
     this.id = this.opts.id || 'ProgressBar'
     this.title = 'Progress Bar'
     this.type = 'progressindicator'
@@ -28,10 +28,10 @@ module.exports = class ProgressBar extends Plugin {
   render (state) {
     const progress = state.totalProgress || 0
 
-    return html`<div class="UppyProgressBar" style="${this.opts.fixed ? 'position: fixed' : 'null'}">
-      <div class="UppyProgressBar-inner" style="width: ${progress}%"></div>
-      <div class="UppyProgressBar-percentage">${progress}</div>
-    </div>`
+    return <div class="uppy uppy-ProgressBar" style={{ position: this.opts.fixed ? 'fixed' : 'initial' }}>
+      <div class="uppy-ProgressBar-inner" style={{ width: progress + '%' }} />
+      <div class="uppy-ProgressBar-percentage">{progress}</div>
+    </div>
   }
 
   install () {

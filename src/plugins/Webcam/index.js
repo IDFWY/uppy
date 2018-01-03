@@ -1,4 +1,5 @@
-const Plugin = require('../Plugin')
+const { h } = require('preact')
+const Plugin = require('../../core/Plugin')
 const Translator = require('../../core/Translator')
 const {
   getFileTypeExtension,
@@ -34,8 +35,8 @@ function getMediaDevices () {
  * Webcam
  */
 module.exports = class Webcam extends Plugin {
-  constructor (core, opts) {
-    super(core, opts)
+  constructor (uppy, opts) {
+    super(uppy, opts)
     this.mediaDevices = getMediaDevices()
     this.supportsUserMedia = !!this.mediaDevices
     this.protocol = location.protocol.match(/https/i) ? 'https' : 'http'
@@ -43,7 +44,6 @@ module.exports = class Webcam extends Plugin {
     this.title = 'Webcam'
     this.type = 'acquirer'
     this.icon = WebcamIcon
-    this.focus = this.focus.bind(this)
 
     const defaultLocale = {
       strings: {
@@ -86,6 +86,7 @@ module.exports = class Webcam extends Plugin {
     this.startRecording = this.startRecording.bind(this)
     this.stopRecording = this.stopRecording.bind(this)
     this.oneTwoThreeSmile = this.oneTwoThreeSmile.bind(this)
+    this.focus = this.focus.bind(this)
 
     this.webcamActive = false
 
@@ -167,11 +168,13 @@ module.exports = class Webcam extends Plugin {
         isRecording: false
       })
       return this.getVideo()
-    }).then((file) => {
-      return this.core.addFile(file)
-    }).then(() => {
+    })
+    .then(this.uppy.addFile)
+    .then(() => {
       this.recordingChunks = null
       this.recorder = null
+      const dashboard = this.uppy.getPlugin('Dashboard')
+      if (dashboard) dashboard.hideAllPanels()
     }, (error) => {
       this.recordingChunks = null
       this.recorder = null
@@ -192,7 +195,7 @@ module.exports = class Webcam extends Plugin {
   }
 
   getVideoElement () {
-    return this.el.querySelector('.UppyWebcam-video')
+    return this.el.querySelector('.uppy-Webcam-video')
   }
 
   oneTwoThreeSmile () {
@@ -207,11 +210,11 @@ module.exports = class Webcam extends Plugin {
         }
 
         if (count > 0) {
-          this.core.info(`${count}...`, 'warning', 800)
+          this.uppy.info(`${count}...`, 'warning', 800)
           count--
         } else {
           clearInterval(countDown)
-          this.core.info(this.i18n('smile'), 'success', 1500)
+          this.uppy.info(this.i18n('smile'), 'success', 1500)
           setTimeout(() => resolve(), 1500)
         }
       }, 1000)
@@ -224,14 +227,14 @@ module.exports = class Webcam extends Plugin {
 
     this.opts.onBeforeSnapshot().catch((err) => {
       const message = typeof err === 'object' ? err.message : err
-      this.core.info(message, 'error', 5000)
+      this.uppy.info(message, 'error', 5000)
       return Promise.reject(new Error(`onBeforeSnapshot: ${message}`))
     }).then(() => {
       return this.getImage()
     }).then((tagFile) => {
       this.captureInProgress = false
-      this.core.addFile(tagFile)
-      const dashboard = this.core.getPlugin('Dashboard')
+      this.uppy.addFile(tagFile)
+      const dashboard = this.uppy.getPlugin('Dashboard')
       if (dashboard) dashboard.hideAllPanels()
     }, (error) => {
       this.captureInProgress = false
@@ -286,7 +289,7 @@ module.exports = class Webcam extends Plugin {
   focus () {
     if (this.opts.countdown) return
     setTimeout(() => {
-      this.core.info(this.i18n('smile'), 'success', 1500)
+      this.uppy.info(this.i18n('smile'), 'success', 1500)
     }, 1000)
   }
 
@@ -301,7 +304,7 @@ module.exports = class Webcam extends Plugin {
       return PermissionsScreen(webcamState)
     }
 
-    return CameraScreen(Object.assign({}, webcamState, {
+    return h(CameraScreen, Object.assign({}, webcamState, {
       onSnapshot: this.takeSnapshot,
       onStartRecording: this.startRecording,
       onStopRecording: this.stopRecording,
