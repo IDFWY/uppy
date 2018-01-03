@@ -7,7 +7,7 @@ fi
 
 VERSION_LENGTH=${#CIRCLE_BUILD_NUM}
 
-NEW_VERSION=$(echo $CIRCLE_BUILD_NUM | cut -c1-1).0.0
+NEW_VERSION=$(echo $CIRCLE_BUILD_NUM).0.0
 
 
 echo $NEW_VERSION | yarn version --no-git-tag-version
